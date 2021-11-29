@@ -1,0 +1,74 @@
+version: '3.8'
+
+# Author: Joris Rietveld <jorisrietveld@gmail.com>
+# Created: 29-11-21 08:12
+# Licence: GPLv3
+# Description: This is the docker compose file that configures the service to run in our container.
+
+# Commands
+# docker-compose up -d to run the container
+# docker-compose ps shows active processes
+# docker-compose stop stops all containers
+# docker-ccompose logs -f
+# docker compose down -v --rmi all --remove-orphans
+
+# Services
+services:
+
+  # Nginx Service
+  nginx:
+    image: nginx:1.21.4-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./src:/var/www/php
+      - ./.docker/nginx/conf.d:/etc/nginx/conf.d
+      - phpmyadmindata:/var/www/phpmyadmin
+    # Make sure php is running first
+    depends_on:
+        - php
+        - phpmyadmin
+
+  # PHP Service
+  php:
+    build: ./.docker/php
+    working_dir: /var/www/php
+    volumes:
+      - ./src:/var/www/php
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+    # MySQL Service
+  mysql:
+    image: mysql/mysql-server:8.0
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: demo
+    volumes:
+      - ./.docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+      - mysqldata:/var/lib/mysql
+    # Check if mysql is running and ready to accept connections
+    healthcheck:
+      test: mysqladmin ping -h 127.0.0.1 -u root --password=$$MYSQL_ROOT_PASSWORD
+      interval: 5s
+      retries: 10
+
+  # PhpMyAdmin Service
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:5-fpm-alpine
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+# Volumes
+volumes:
+  mysqldata:
+  phpmyadmindata:
