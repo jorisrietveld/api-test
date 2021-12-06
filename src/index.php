@@ -35,5 +35,6 @@ if (empty($tables)) {
     echo '</ul>';
 }
 ?>
+    <h1>Hello world</h1>
 </body>
 </html>
