@@ -17,33 +17,33 @@ services:
 
   # Nginx Service
   nginx:
-    image: nginx:1.21.4-alpine
+    image: nginx:1.19-alpine
     ports:
-      - "8080:80"
+      - 80:80
     volumes:
-      - ./src:/var/www/php
+      - ./src/backend:/var/www/backend
       - ./.docker/nginx/conf.d:/etc/nginx/conf.d
       - phpmyadmindata:/var/www/phpmyadmin
-    # Make sure php is running first
     depends_on:
-        - php
-        - phpmyadmin
+      - backend
+      - phpmyadmin
 
-  # PHP Service
-  php:
-    build: ./.docker/php
-    working_dir: /var/www/php
+  # Backend Service
+  backend:
+    build:
+      context: ./src/backend
+      args:
+        HOST_UID: $HOST_UID
+    working_dir: /var/www/backend
     volumes:
-      - ./src:/var/www/php
+      - ./src/backend:/var/www/backend
     depends_on:
       mysql:
         condition: service_healthy
 
-    # MySQL Service
+  # MySQL Service
   mysql:
     image: mysql/mysql-server:8.0
-    ports:
-      - "3307:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_ROOT_HOST: "%"
@@ -51,7 +51,6 @@ services:
     volumes:
       - ./.docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
       - mysqldata:/var/lib/mysql
-    # Check if mysql is running and ready to accept connections
     healthcheck:
       test: mysqladmin ping -h 127.0.0.1 -u root --password=$$MYSQL_ROOT_PASSWORD
       interval: 5s
@@ -60,15 +59,17 @@ services:
   # PhpMyAdmin Service
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:5-fpm-alpine
-    ports:
-      - "8081:80"
     environment:
       PMA_HOST: mysql
+    volumes:
+      - phpmyadmindata:/var/www/html
     depends_on:
       mysql:
         condition: service_healthy
 
 # Volumes
 volumes:
+
   mysqldata:
+
   phpmyadmindata:
